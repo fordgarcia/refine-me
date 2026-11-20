@@ -1,6 +1,6 @@
 ---
 name: "refine-me"
-description: "Judges designs and learns the user's taste. Use before generating any UI (Claude Design or Code), when the user critiques or compares designs, or on /refine-me context|analyze|compare|prefs|rules."
+description: "Judges designs and learns the user's taste. Use before generating any UI (Claude Design or Code), when the user critiques, compares or saves designs, or on /refine-me context|analyze|compare|save|prefs|rules."
 ---
 
 # Refine-Me
@@ -38,13 +38,14 @@ Typed as `/refine-me <command> <arguments>`; the skill receives the rest of the 
 | Command | Plain-language equivalents | Does |
 |---|---|---|
 | `context [text]` | "here's the context", "this is for…", "the users are…" | Sets or updates this project's brief (section 0.2). With no text, shows it, each field marked Given or Assumed. |
-| `analyze [target]` | "analyze this", "what's wrong with this", "refine based on what you've learned" | Full evaluation (section 3), including faults nobody asked about. Target defaults to the design in view, else the last one made. Never redesigns by itself. |
-| `compare A B` | "which is better", "compare with the previous version" | Section 3 on both, side by side, a verdict per dimension. No overall winner unless one wins all four. The user's pick is logged (section 6). |
+| `analyze [target]` | "analyze this", "what's wrong with this", "refine based on what you've learned" | Full evaluation (section 3), including faults nobody asked about. Target: a design ID (`D-0007`), else the design in view, else the last one saved. Never redesigns by itself. |
+| `compare A B` | "which is better", "compare with the previous version" | Section 3 on both (design IDs or designs in view), side by side, a verdict per dimension. No overall winner unless one wins all four. The user's pick is logged (section 6). |
+| `save [file] [origin]` | "save this design", "here's my design", "here's a reference" | Saves the design to `designs/` with a new ID and `meta.md` (section 0.4). Saves only; no evaluation. |
 | `prefs [filter]` | "what have you learned about my taste" | Preferences with confidence, frequency and evidence IDs, then the rules in force. Filter by category (e-commerce, dashboard…) or dimension (geometry, colour…). |
 | `confirm P-n` / `reject P-n` | "yes, make that a rule", "no, that's wrong" | Confirm: High confidence, rule added to `rules.md`. Reject: kept in history, never applied. Both are logged. |
 | `rules [file or text]` | "use my rules", "import this rule file" | No argument: show the active base rules and their source. With a file or text: import it as the base rules (section 0.3). |
 
-**Runs on its own:** section 1 every time a design is generated, and section 2 after every judgment. `analyze` runs only when asked, never after every change, because a full evaluation on each edit costs time and tokens.
+**Runs on its own:** section 1 every time a design is generated (including saving it, section 0.4), and section 2 after every judgment. `analyze` runs only when asked, never after every change, because a full evaluation on each edit costs time and tokens.
 
 ---
 
@@ -52,12 +53,18 @@ Typed as `/refine-me <command> <arguments>`; the skill receives the rest of the 
 
 ### 0.1 Where it lives
 
+The store has two folders: **`designs/`** holds what gets judged (section 0.4); **`memory/`** holds only text, what was learned. Create both on first use if missing, without asking.
+
 | Surface | Location |
 |---|---|
-| Claude Code, in a project | `.refine-me/` at the repo root (project) plus `~/.claude/refine-me/` (global taste). Read both; the project wins on conflict. |
-| Claude Code, no project | `~/.claude/refine-me/` |
-| Chat with memory tools | memory file `/topics/refine-me.md`: one headed section per layer, one Context section per project |
+| Claude Code, in a project | `.refine-me/designs/` and `.refine-me/memory/` at the repo root, plus `~/.claude/refine-me/memory/` for global taste. Read both `memory/` folders; the project wins on conflict. Designs are always per project. |
+| Claude Code, no project | `~/.claude/refine-me/memory/`, and `~/.claude/refine-me/designs/<project-slug>/` |
+| Chat with memory tools | memory file `/topics/refine-me.md`: one headed section per memory layer, one Context section per project. Memory is text only, so there is no `designs/`: a design is recorded as a `Design ref` with an artifact link or a short description. |
 | None of the above | Keep the layers in the conversation; at the end, give the user the files to save. |
+
+When creating `.refine-me/` inside a git repository, add `.refine-me/designs/` to `.gitignore` (screenshots are large, and client work or references must not be committed by accident) and say so in one line. `memory/` is plain text and safe to commit.
+
+Memory layers, in `memory/`:
 
 | Layer | File | Rule |
 |---|---|---|
@@ -68,7 +75,7 @@ Typed as `/refine-me <command> <arguments>`; the skill receives the rest of the 
 | Context | `context.md` | One per project. Facts, not taste. |
 | Tool facts | `tool-facts.md` | Rendering or tool quirks learned the hard way, with their workaround. |
 
-If the store is empty and section 8 (seed) hasn't been migrated, migrate it first.
+A new store starts empty. If the user points to an existing store (another `.refine-me/`, an export of their chat memory), copy it into `memory/` before anything else.
 
 ### 0.2 Context fields
 
@@ -81,6 +88,7 @@ If the store is empty and section 8 (seed) hasn't been migrated, migrate it firs
 | Primary tasks and success | configure and see the exact price; compare sizes |
 | Platform and size | phone 390px; desktop 1280px |
 | Brand and must-keep | keep the product's colours, type and buttons |
+| Icons | the set the user named ("use Phosphor for icons"), else the section 4.7 default |
 | Constraints | course rubric, WCAG AA, tech stack, deadline |
 | Tone goal | premium, calm, playful… |
 | References | links, screenshots, liked or disliked designs |
@@ -103,6 +111,35 @@ If the store is empty and section 8 (seed) hasn't been migrated, migrate it firs
 
 Preferences are matched by interface category: one recorded for e-commerce does not automatically carry to a developer dashboard. A preference can never add an element the base rules would cut; it can only restyle what stays. An imported rule file replaces sections 4.2 to 4.5 where they conflict, never section 4.1.
 
+### 0.4 The designs folder
+
+One subfolder per design, `designs/D-<nnnn>/`, numbered per project and never reused:
+
+- `index.html` (or the source file), when there is one.
+- `shot.webp` (or `.png`): what was actually seen, because a judgment is about the render, not the source. Take it with a headless browser when one is available; otherwise ask for a screenshot only when the user judges that design. If there is none, write `Shot: none` in `meta.md`.
+- `meta.md`:
+
+```
+- ID: D-0007
+- Origin: claude-code | claude-design | user | reference
+- Project: <project slug>
+- Date: <yyyy-mm-dd>
+- Title: <the name the user would use, e.g. "Noir">
+- Source: <file path, artifact URL, canvas name, site URL>
+- Parent: <D-id this revises, if any>
+- Judged: <F-ids> | unjudged
+```
+
+How designs get in:
+- **Claude Code outputs:** saved automatically every time a design is delivered (section 1, step 7).
+- **Claude Design outputs:** saved when Claude can reach them (an export, a handoff file, or a link the user gives). Never assume the canvas can be read directly; if it can't, ask once for an export when the user judges the design.
+- **From the user** (`save`, an attachment, or a file dropped into `designs/`): give it an ID and `meta.md`. If they didn't say whether it is their own design or a reference, record `Origin: reference (assumed)` and confirm in one line at the end of the reply. A reference decides how things look, never what goes on the page (section 4.2), and is never counted as Claude's output.
+
+Rules:
+- **Saving is automatic; evaluating is not.** On save, only section 1's checklist runs, and only on Claude's own outputs. `analyze` and `compare` run on request and take design IDs.
+- **An unjudged design is not evidence.** Preferences come only from log records. Each record's `Design ref` names its D-ids, and each design's `Judged` line lists its F-ids back.
+- **Never delete a design**, judged or not; pruning is the user's call.
+
 ---
 
 ## 1. Before generating any design
@@ -115,6 +152,7 @@ Preferences are matched by interface category: one recorded for e-commerce does 
 6. End the delivery with two lines:
    `Skipped: <left out on purpose, and the option if they want it>`
    `Not checked / risk: <e.g. real screen reader, translations, real data>`
+7. Save the design to `designs/` (section 0.4) and name its ID in the delivery ("Saved as D-0007"). In chat, skip this step.
 
 ---
 
@@ -124,7 +162,7 @@ Judgment → log record → interpretation → pattern check → proposal → ap
 
 For every meaningful judgment (criticism, praise, a pick between options, a rejection, "the previous one was better", a repeated correction):
 
-1. **Append a log record**, keeping the user's exact words.
+1. **Append a log record**, keeping the user's exact words, and add its F-id to the `Judged` line of each design it refers to.
 2. **Name the element**: which design, which component or decision.
 3. **Signal**: positive, negative, neutral or ambiguous. "Somewhat decent" is weak positive, not approval.
 4. **Interpret** as a hypothesis. For praise, list the concrete decisions that may explain it (palette, type, layout, a component). For a pick, the losers are evidence too: what do they share that the winners lack?
@@ -140,7 +178,7 @@ Ask a clarifying question only when the ambiguity would change what gets built o
 ```
 ### F-<yyyymmdd>-<n>
 - Original: "<verbatim>"
-- Design ref: <project / artboard / version / screenshot>
+- Design ref: <D-ids; in chat, an artifact link or short description>
 - Category: <e-commerce | dashboard | landing | mobile app | ...>
 - Element: <component or decision>
 - Signal: positive | negative | neutral | ambiguous
@@ -289,7 +327,7 @@ Stop at the first rung that fully works:
 1. **Does it need to exist?** Skip what nobody asked for; name it in one line. A vague request gets the smallest version that does the core job.
 2. **Does the product or design system already have it?** Use it the way nearby screens do.
 3. **Does the browser or OS already do it?** `<dialog>`, `<details>`, `<select>`, `type="date"`, a plain `<table>`, the system font.
-4. **Does an installed library already have it?** Never add a library, font or icon pack for one element.
+4. **Does an installed library already have it?** Never add a library, font or icon pack for one element (for one icon, copy that one SVG from the section 4.7 set).
 5. **Can it be one rule?** One token or one property.
 6. **Otherwise:** the minimum new design that works.
 
@@ -317,6 +355,22 @@ If the content has groups or levels, the layout shows them, so users can see whe
 - **The markup has the same structure:** headings, or `role="group"` with `aria-labelledby`, so screen readers get the same groups.
 - **References:** when copying a reference's look, also copy how it shows structure (its indents, gaps, icon columns, label styles), or replace each cue with an equal one.
 
+### 4.7 Icons
+
+**Which set**, the first that applies:
+1. **The user named one** ("use Lucide for icons"): record it as the `Icons` field in this project's `context.md`, Given. It is a project fact, not a preference, and does not carry to other projects unless the user says it is their default everywhere (then it is a rule in global `rules.md`).
+2. **The product already uses a set:** use it.
+3. **The platform has a convention:** Nerd Font glyphs (devicons, codicons) for terminal and IDE interfaces; the platform's own symbols for native apps (Material Symbols on Android, SF Symbols on Apple platforms only).
+4. **Otherwise Lucide** (ISC licence, official packages for most frameworks, plain SVG for static pages).
+
+Rules:
+- **One family per product.** Never mix sets. Outline and filled versions of one set are mixed only to show state (filled = active).
+- **Match the type:** stroke close to the text's weight at that size; icon sizes and the stroke width are tokens (for example 16, 20, 24px, one stroke).
+- **Never hand-draw an icon the set already has.** If the set lacks one, use the nearest meaning or a word. A drawn icon must match the set's grid, stroke and corners, and is marked `shortcut:`.
+- **Icons support labels, they don't replace them.** Icon-only only for universal meanings (close, search, menu, back), always with `aria-label`; everything else gets a visible word. Decorative icons get `aria-hidden="true"`.
+- **Licence:** record the set and its licence in `context.md`. MIT, ISC and Apache 2.0 sets are fine; CC BY sets (Font Awesome Free icons, Codicons) need attribution; read custom licences (for example the Remix Icon License) before using them in anything sold.
+- **Delivery:** in code, the set's official package or its SVG files; in static mockups, inline SVG so nothing depends on the network.
+
 ---
 
 ## 5. The checklist (used by section 1 and section 3)
@@ -326,7 +380,7 @@ If the content has groups or levels, the layout shows them, so users can see whe
 3. **Lean:** element test on every element; one main action per view; nothing said twice, states included (no readout next to a control that already shows its state); controls scale with content.
 4. **States:** all states in section 4.3 exist for what the design touches.
 5. **Real content:** longest text, empty, very long list, 320px, 200% zoom. Nothing hidden off-screen without a cue.
-6. **Consistency:** same action, same look and label on every screen; no drift (two blues, three button styles, mixed radii, one-off spacing).
+6. **Consistency:** same action, same look and label on every screen; no drift (two blues, three button styles, mixed radii, one-off spacing, mixed icon sets or strokes; section 4.7).
 7. **Reuse:** repeated patterns are one component; tokens instead of hard-coded one-offs.
 8. **Motion:** plan present; each motion passes the purpose test; tokens used; motion-ready structure; reduced-motion fallback.
 9. **Ladder:** nothing built that a higher rung already provides.
@@ -354,60 +408,3 @@ If the content has groups or levels, the layout shows them, so users can see whe
 | High | Repeated **and** explicitly confirmed | A rule in `rules.md` |
 
 One criticism is a provisional signal, never a permanent rule. Ambiguous statements never become rules silently. Historical feedback is never discarded when a preference changes.
-
----
-
-## 8. Seed evidence (migrate on first use)
-
-From the session that created this skill: an HCIN311 course redesign of the Apple PH "Buy iPhone 18 Pro" configurator, phone mockups, many directions.
-
-```
-### F-20261117-1
-- Original: "You basically just copied the rest"
-- Design ref: style row A/B/C (apple-zen, Swiss, Night): same layout, new colours
-- Category: e-commerce, mobile   - Element: alternatives as reskins
-- Signal: negative   - Kind: what-goes-on-the-page
-- Interpretation: alternatives must differ in structure, not skin
-- Confidence: Medium (repeated as "different UI ... as usual")   - Status: Pending
-
-### F-20261117-2
-- Original: "For the other redesigns, don't follow the non-use of rounded corners"
-- Element: square corners in the Swiss style
-- Signal: negative   - Kind: how-it-looks-and-moves
-- Interpretation: prefers rounded geometry in consumer shop UI
-- Confidence: Low   - Related: F-20261117-3   - Status: Pending
-
-### F-20261117-3
-- Original: "They don't have rounded corners."
-- Element: apple-zen screen as rendered
-- Signal: negative   - Kind: bug (renderer dropped inline border-radius)
-- Interpretation: a tool fact, not extra evidence for F-20261117-2
-- Status: Confirmed (bug)
-
-### F-20261117-4
-- Original: "This time, we're going for expensive look so users can feel that the website is good."
-- Category: e-commerce   - Signal: neutral (brief)   - Kind: context
-- Interpretation: premium feel as a trust signal for shop pages. Under the base rules it should come from type, spacing, material and motion, not from added elements.
-- Confidence: Low   - Status: Contextual
-
-### F-20261118-1
-- Original: "Only the Luxe E Noir and Luxe F were somewhat decent."
-- Design ref: Noir (black + champagne, Manrope light numerals, swipeable storage cards, floating ticket) and Showroom (product stage, white bottom sheet, 4-stop storage track, large price readout). Rejected: Atelier (ivory + serif order sheet), Zen, Swiss, Night, Matrix (table), Concierge (chat), Bento (tiles).
-- Signal: weak positive for Noir and Showroom; weak negative for the rest
-- Kind: how-it-looks-and-moves (mostly)
-- Interpretation (hypotheses): the price as the hero; dark or high-contrast premium palettes; large light numerals; materials and depth over ornament. Possibly dislikes serif luxury, chat UIs and bento grids for this task. Base-rule conflicts: Noir's swipe row hides options off-screen; the floating ticket and the stage are added elements that need a job. The Matrix rejection does not override "tables before cards when people compare": it was one weak signal about a whole design, not about tables.
-- Confidence: Low   - Status: Pending
-
-### F-20261118-2
-- Original (summary of the user's stated goals): no unnecessary things, no overloaded information, simple, a strong base for animation, consistent, reusable components, avoid over-engineering, pragmatism, defensive engineering. Motion should be included, or components built for the planned animation. Defensive applies to design only.
-- Kind: what-goes-on-the-page
-- Status: Confirmed (encoded in "What every design must be" and section 4)
-```
-
-Open these provisional preferences from the seed:
-- P-1 Structural variety in alternatives: Medium (F-20261117-1).
-- P-2 Rounded geometry in consumer UI: Low (F-20261117-2).
-- P-3 Price as the hero, large light numerals: Low (F-20261118-1).
-- P-4 Dark or high-contrast premium palettes for shop pages: Low (F-20261118-1, F-20261117-4).
-
-Tool fact for `tool-facts.md`: the Claude Design canvas once dropped inline `border-radius`; mirroring radii into a stylesheet class rule with `!important` worked around it.
