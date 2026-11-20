@@ -232,6 +232,7 @@ For designs: shared components versus one-offs, tokens versus hard-coded values,
 | Lean | `Lean: -N elements possible` |
 | Preference insights | New signals, contradictions, proposed promotions |
 | Not checked | What this evaluation could not see |
+| Skill gaps | While refine-me is in development: for each finding, the rule that allowed it or failed to catch it, and the edit that would catch it next time |
 
 ---
 
@@ -254,6 +255,7 @@ Adapted from Ponytail's "lazy senior designer": lazy about the solution, never a
 - **The element test:** keep an element only if it has a **job** (one sentence: what it helps the user do or decide; "looks nice" is not a job), does it **once** on the screen, and would be **missed** if deleted.
 - One message per section, one main action per view; the primary style is used once per screen.
 - **Say it once:** don't show the same fact as a bar, a number, a label and a button caption.
+- **State lives in the control:** a control that shows its own state (switch, checkbox, selected tab, stepper value) gets no second readout next to it. Add a readout only for what the control can't show, such as a slider's exact number and unit. If the state is unclear without a readout, fix the control (fill, knob position, a mark inside it) instead of captioning it. A word placed beside a switch can even be misread as the side the knob should be on.
 - Plain text before containers: no chip, badge or box unless it does something. Showing a group counts as doing something; when you remove a container, keep its grouping with section 4.6's cues.
 - Lists before layouts; tables before cards when people compare.
 - Controls scale with content: no search, filter or sort over items that fit on one or two screens. No "See all" under a complete list.
@@ -263,7 +265,7 @@ Adapted from Ponytail's "lazy senior designer": lazy about the solution, never a
 ### 4.3 Defensive (design only)
 
 Defend against inputs that **really happen**, nothing hypothetical:
-- Every state of every component the design touches: default, hover, focus, active, disabled, loading, empty, error, success.
+- Every state of every component the design touches: default, hover, focus, active, disabled, loading, empty, error, success. A disabled control still shows its value: a disabled switch that is on stays visibly on (dimmed accent, knob in place), never greyed until it looks off.
 - Longest real text, translations, an empty list, a very long list.
 - 320px wide, 200% zoom, safe areas, the on-screen keyboard, slow loading.
 - Every screen that uses a component or token you change.
@@ -321,7 +323,7 @@ If the content has groups or levels, the layout shows them, so users can see whe
 
 1. **Task:** can each task be completed? Is the result (price, total, status, confirmation) the most visible thing, shown once?
 2. **Gate:** section 4.1 passes.
-3. **Lean:** element test on every element; one main action per view; nothing said twice; controls scale with content.
+3. **Lean:** element test on every element; one main action per view; nothing said twice, states included (no readout next to a control that already shows its state); controls scale with content.
 4. **States:** all states in section 4.3 exist for what the design touches.
 5. **Real content:** longest text, empty, very long list, 320px, 200% zoom. Nothing hidden off-screen without a cue.
 6. **Consistency:** same action, same look and label on every screen; no drift (two blues, three button styles, mixed radii, one-off spacing).
