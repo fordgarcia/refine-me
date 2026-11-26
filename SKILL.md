@@ -76,7 +76,7 @@ Memory layers, in `memory/`:
 | Base rules | `rules-base.md` | Imported with `rules`. If absent, section 4 is the base rules. |
 | Context | `context.md` | One per project. Facts, not taste. |
 | Tool facts | `tool-facts.md` | Rendering or tool quirks learned the hard way, with their workaround. |
-| Skill edits | `skill-edits.md` | While the skill is in development: every proposed edit to the skill with its status (section 9). Created on first use; one copy only (link to it from elsewhere, never duplicate it). |
+| Skill edits | `skill-edits.md` | While the skill is in development: every proposed edit to the skill with its status (section 9). |
 
 A new store starts empty. If the user points to an existing store (another `.refine-me/`, an export of their chat memory), copy it into `memory/` before anything else.
 
@@ -136,7 +136,7 @@ One subfolder per design, `designs/D-<nnnn>/`, numbered per project and never re
 How designs get in:
 - **Claude Code outputs:** saved automatically every time a design is delivered (section 1, step 7).
 - **Claude Design outputs:** saved when Claude can reach them (an export, a handoff file, or a link the user gives). Never assume the canvas can be read directly; if it can't, ask once for an export when the user judges the design.
-- **From the user** (`save`, an attachment, or a file dropped into `designs/`): give it an ID and `meta.md`. If they didn't say whether it is their own design or a reference, record `Origin: reference (assumed)` and confirm in one line at the end of the reply. A reference decides how things look, never what goes on the page (section 4.2), and is never counted as Claude's output. If a reference can't be read (corrupt, blank, wrong file), say so at once and ask for a re-export; nothing is built against it until it arrives, and nothing (DESIGN.md, mockups, the rules) stands in for it.
+- **From the user** (`save`, an attachment, or a file dropped into `designs/`): give it an ID and `meta.md`. If they didn't say whether it is their own design or a reference, record `Origin: reference (assumed)` and confirm in one line at the end of the reply. A reference decides how things look, never what goes on the page (section 4.2), and is never counted as Claude's output.
 
 Rules:
 - **Saving is automatic; evaluating is not.** On save, only section 1's checklist runs, and only on Claude's own outputs. `analyze` and `compare` run on request and take design IDs.
@@ -214,8 +214,7 @@ Evaluate, recommend, and wait. Apply changes only when the user asks.
 1. **Context:** load `context.md`; infer empty fields from the design itself (content, controls, copy, device size) and the conversation, mark them Assumed, save them, and list them at the top of the output.
 2. **Gate:** run section 4.1 (Never cut). Each failure goes to Must fix, and any failure caps the band at **Acceptable** whatever the points say.
 3. **Checklist:** run section 5, including faults the user didn't mention. Every finding needs a concrete case: *this user, on this screen, with this content, gets this bad result.* No case, no finding. When a finding rests on an assumption, say so ("If users are first-time buyers, the storage step needs a size guide").
-4. **Reference cues:** when a reference is given, it is the ground truth: judge the design against it, not against the rules or mockups made from them. List how it shows structure (indents, gaps, icon columns, label styles, regions, named groups, control anatomy) and check that the design keeps or replaces each one. Where the reference and the rules disagree, the reference wins and the rule gets a Skill gap.
-4b. **Run it, don't just look:** when the design runs (a headless browser, a test script), produce every state it touches (hover, focus, pressed, disabled, empty) and do each primary task once, shooting before and after; the result must land where the user looks. Judge states in pairs too (hover on one item while focus is on another, selected + focused). "Unavailable" means the tool can't produce it, not that nobody tried. A task or state judged only from still shots is marked **on spec, unverified**.
+4. **Reference cues:** when a reference is given, list how it shows structure (indents, gaps, icon columns, label styles, regions) and check that the design keeps or replaces each one.
 5. **Score** the four dimensions below **separately**. Never merge them into one number.
 
 ### 3.1 Objective quality: 100 points
@@ -243,8 +242,7 @@ Scoring discipline:
 - Every deduction cites something observable ("the 2TB card is off-screen at 390px"), not a feeling.
 - What can't be seen is **Unavailable** (a static mockup has no hover; one width says nothing about reflow). Re-total over the available weights and say which were left out.
 - A gate result or score for a design Claude hasn't seen rendered is marked **on spec, unverified**: it describes the values intended, not what renders.
-- **Self-grading guard:** for Claude's own fresh output, list the three weakest points before the score, and never score above 85 without a user judgment backing it. Self-scores drift high. When the self-score decides something (ship, pick, stop), end with one line asking for a single judgment on the weakest screen; log the answer (section 2).
-- **No false precision:** whole numbers only. The rubric is for designs; small choices (a heading, a label, one control) get a verdict with reasons, not weighted decimals.
+- **Self-grading guard:** for Claude's own fresh output, list the three weakest points before the score, and never score above 85 without a user judgment backing it. Self-scores drift high.
 - Never reward decoration or complexity. Weigh an intentional choice's purpose before deducting.
 - Keep apart: confirmed facts (read from code), observations (seen in a render) and interpretations.
 
@@ -276,8 +274,7 @@ For designs: shared components versus one-offs, tokens versus hard-coded values,
 | Lean | `Lean: -N elements possible` |
 | Preference insights | New signals, contradictions, proposed promotions |
 | Not checked | What this evaluation could not see |
-| Skill gaps | While refine-me is in development: for each finding, the rule that allowed it or failed to catch it, and the edit that would catch it next time. Never left out: write `none found` if empty, and append each gap to `skill-edits.md` in the same reply |
-| Found by | Findings this round caught by the skill vs. by the user (for example `skill 4 / user 1`). The trend is the measure of "fewer iterations" |
+| Skill gaps | While refine-me is in development: for each finding, the rule that allowed it or failed to catch it, and the edit that would catch it next time |
 
 ---
 
@@ -288,18 +285,18 @@ Adapted from Ponytail's "lazy senior designer": lazy about the solution, never a
 ### 4.1 Never cut (fixed; no import overrides this)
 
 - Text contrast at least 4.5:1 (3:1 at 24px+); control boundaries at least 3:1.
-- Visible focus (indicator at least 3:1 against adjacent colours, WCAG 1.4.11) and full keyboard use; real buttons, links and labelled inputs. Every drag (reorder, move, resize) has a keyboard path, and the design shows it: pick, move, drop, and its focus state.
+- Visible focus and full keyboard use; real buttons, links and labelled inputs.
 - Targets 44–48px on touch screens; at least 24×24px (WCAG 2.2, 2.5.8) on pointer-and-keyboard desktop UIs. Colour is never the only signal; icon-only controls get a word or label.
 - Reduced motion respected.
 - Errors say how to fix them; nothing makes users lose or retype work, or get stuck.
 - Honest pricing, consent and labels; a way to cancel or undo; a warning before destructive actions; no dark patterns.
-- Anything the user explicitly asked for. If that request fails another item here, it is not a taste call: say plainly which item it fails, offer a compliant version, and build theirs only after they confirm they know; record it under `Not checked / risk`.
+- Anything the user explicitly asked for.
 
 ### 4.2 Lean and simple
 
 - **The element test:** keep an element only if it has a **job** (one sentence: what it helps the user do or decide; "looks nice" is not a job), does it **once** on the screen, and would be **missed** if deleted.
 - One message per section, one main action per view; the primary style is used once per screen.
-- **Say it once, and say what it is:** don't show the same fact as a bar, a number, a label and a button caption. Check every fact against every region of the same view (header, footer, sidebar row) and across forms (a heading that repeats the logo, a card title that repeats its button). Location: the navigation's selection shows the current page, so a title or breadcrumb repeats it only when the navigation is hidden. A bare number first takes the element test; if it stays, it gets a unit, a label or a position that makes it obvious ("1 pickiso 1" fails).
+- **Say it once, and say what it is:** don't show the same fact as a bar, a number, a label and a button caption. That includes location: the navigation's selection shows the current page, so a title or breadcrumb repeats it only when the navigation is hidden. And a bare number gets a unit, a label or a position that makes it obvious ("1 pickiso 1" fails).
 - **State lives in the control:** a control that shows its own state (switch, checkbox, selected tab, stepper value) gets no second readout next to it. Add a readout only for what the control can't show, such as a slider's exact number and unit. If the state is unclear without a readout, fix the control (fill, knob position, a mark inside it) instead of captioning it. A word placed beside a switch can even be misread as the side the knob should be on.
 - Plain text before containers: no chip, badge or box unless it does something. Showing a group counts as doing something; when you remove a container, keep its grouping with section 4.6's cues.
 - Lists before layouts; tables before cards when people compare.
@@ -388,12 +385,12 @@ Rules:
 
 ## 5. The checklist (used by section 1 and section 3)
 
-1. **Task:** can each task be completed? Is the result (price, total, status, confirmation) the most visible thing, shown once? When the design runs, do each task once (section 3.0, 4b).
-2. **Gate:** section 4.1 passes, **measured, never estimated**. Click targets: from the code (hit rects, padding) and the render; list every one under the minimum. Contrast: sample the pixels of the lowest-contrast text and control edges and compute the ratio; report the worst pair, on every theme the product ships. A token or comment that claims a ratio ("3:1 on surface") is measured against every background it sits on; a wrong claim is a Must fix on the token, fixed at the root.
+1. **Task:** can each task be completed? Is the result (price, total, status, confirmation) the most visible thing, shown once?
+2. **Gate:** section 4.1 passes. Measure every control's clickable box (from the values, and from the render when there is one); never assume a size passes.
 3. **Lean:** element test on every element; one main action per view; nothing said twice, states included (no readout next to a control that already shows its state); controls scale with content.
-4. **States:** all states in section 4.3 exist for what the design touches, and read correctly in pairs: two items that look lit at once, or a pair that reads as one state, is a finding.
+4. **States:** all states in section 4.3 exist for what the design touches.
 5. **Real content:** longest text, empty, very long list, 320px, 200% zoom. Nothing hidden off-screen without a cue.
-6. **Consistency:** same action, same look and label on every screen; no drift (two blues, three button styles, mixed radii, one-off spacing, mixed icon sets or strokes; section 4.7). List each widget kind on two or more screens (scrollbars, selection and hover fills, focus rings, close buttons, toggles) and compare them side by side: one kind, one look. If the context says the product ships several visual languages (rices, skins, platforms; Given only), check look within each, and across them only words, steps, order and keys.
+6. **Consistency:** same action, same look and label on every screen; no drift (two blues, three button styles, mixed radii, one-off spacing, mixed icon sets or strokes; section 4.7).
 7. **Reuse:** repeated patterns are one component; tokens instead of hard-coded one-offs.
 8. **Motion:** plan present; each motion passes the purpose test; tokens used; motion-ready structure; reduced-motion fallback.
 9. **Ladder:** nothing built that a higher rung already provides.
@@ -436,7 +433,6 @@ One file per project, never global: preferences are scoped by interface category
 | Source | Goes in as |
 |---|---|
 | Real values: `context.md`, the project's CSS or tokens, a brand guide | Front-matter tokens (normative) |
-| The reference, when there is one | Its concrete structure in the matching sections (named groups and what's in them, control anatomy, where help goes) plus its path; DESIGN.md never stands in for it |
 | Confirmed rules and High preferences for this category | Plain rules in the matching section |
 | Medium preferences | Rules marked `(P-n, default)` |
 | Low preferences | `Option, not a rule: ... (P-n)`, never phrased as a rule |
